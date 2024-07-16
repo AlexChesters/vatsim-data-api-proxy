@@ -15,6 +15,13 @@ test:
 			poetry run pylint vatsim_data_api_proxy \
 	)
 
+run:
+	( \
+		export BUCKET_NAME=live-vatsim-data-api-proxy-main-databucket-jkvji1ftarmh && \
+		export AWS_PROFILE=vatsim-data && \
+		poetry run python run.py \
+	)
+
 package: clean install test
 	sh package.sh
 
