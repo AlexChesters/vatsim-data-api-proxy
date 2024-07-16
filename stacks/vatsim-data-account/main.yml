@@ -15,6 +15,51 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+  DataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: cloudfront.amazonaws.com
+          Action:
+            - s3:GetObject
+          Resource:
+            - !Sub "${DataBucket.Arn}/*"
+          Condition:
+            StringEquals:
+              AWS:SourceArn: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+  DataBucketAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${Environment}-vatsim-data-api-proxy-bucket"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          ForwardedValues:
+            QueryString: false
+          MinTTL: 0
+          DefaultTTL: 0
+          MaxTTL: 3600
+          TargetOriginId: BucketOrigin
+          ViewerProtocolPolicy: redirect-to-https
+        HttpVersion: http3
+        Enabled: true
+        Origins:
+          - Id: BucketOrigin
+            OriginAccessControlId: !Ref DataBucketAccessControl
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            DomainName: !GetAtt DataBucket.DomainName
   FunctionExecutionRole:
     Type: AWS::IAM::Role
     Properties:
