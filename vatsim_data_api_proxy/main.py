@@ -18,6 +18,9 @@ def handler(_event, _context):
 
     data = asyncio.run(fetch_data())
 
+    if not data:
+        return
+
     bucket.put_object(
         Body=json.dumps(data["pilots"]).encode("utf-8"),
         Key="controllers.json"
