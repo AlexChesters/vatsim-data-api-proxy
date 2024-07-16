@@ -1,0 +1,99 @@
+Description: pipeline to deploy vatsim-data-api-proxy
+Resources:
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+      ManagedPolicyArns:
+        - !ImportValue ci-infrastructure-codebuild-base-iam-policy
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+        Location: !ImportValue ci-infrastructure-artifacts-bucket-name
+        Path: /artifacts/vatsim-data-api-proxy/
+        Packaging: NONE
+        Name: build
+        NamespaceType: BUILD_ID
+      TimeoutInMinutes: 5
+      Description: Builds vatsim-data-api-proxy
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Value: !ImportValue ci-infrastructure-artifacts-bucket-name
+            Name: ARTIFACTS_BUCKET
+            Type: PLAINTEXT
+      Name: vatsim-data-api-proxy
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Type: S3
+        Location: !ImportValue ci-infrastructure-artifacts-bucket-name
+      Name: vatsim-data-api-proxy
+      RestartExecutionOnUpdate: true
+      RoleArn: !ImportValue ci-infrastructure-codepipeline-base-execution-iam-role
+      PipelineType: V2
+      Stages:
+        - Name: Source
+          Actions:
+            - ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: "1"
+                Provider: CodeStarSourceConnection
+              OutputArtifacts:
+                - Name: GitHubSource
+              RunOrder: 1
+              Name: Clone-From-GitHub
+              Namespace: SourceVariables
+              Configuration:
+                ConnectionArn: !ImportValue ci-infrastructure-github-codestar-connection
+                FullRepositoryId: AlexChesters/vatsim-data-api-proxy
+                BranchName: main
+                OutputArtifactFormat: CODE_ZIP
+        - Name: Build
+          Actions:
+            - ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: "1"
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: GitHubSource
+              OutputArtifacts:
+                - Name: BuiltSource
+              RunOrder: 1
+              Name: CodeBuild
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+        - Name: Deploy-To-Live
+          Actions:
+            - ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: "1"
+                Provider: CloudFormation
+              InputArtifacts:
+                - Name: BuiltSource
+              RunOrder: 1
+              Name: Deploy-Main-Stack
+              Configuration:
+                ActionMode: REPLACE_ON_FAILURE
+                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                StackName: live-vatsim-data-api-proxy-main
+                RoleArn: !ImportValue ci-infrastructure-codepipeline-base-cloudformation-iam-role
+                TemplatePath: BuiltSource::stacks/vatsim-data-account/main.yml
+                TemplateConfiguration: BuiltSource::stacks/vatsim-data-account/parameters/main/live.json

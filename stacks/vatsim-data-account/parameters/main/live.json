@@ -1,0 +1,9 @@
+{
+  "Parameters": {
+    "Environment": "live"
+  },
+  "Tags": {
+    "Project": "vatsim-data-api-proxy",
+    "Environment": "live"
+  }
+}

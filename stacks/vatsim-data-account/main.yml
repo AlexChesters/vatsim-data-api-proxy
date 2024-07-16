@@ -1,0 +1,80 @@
+Transform: AWS::Serverless-2016-10-31
+Description: Infrastructure for vatsim data api proxy
+Parameters:
+  Environment:
+    Description: The infrastructure environment
+    Type: String
+    AllowedValues:
+      - live
+Resources:
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  FunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      RoleName: !Sub "${Environment}-vatsim-data-api-proxy-fetcher-execution-role"
+      Policies:
+        - PolicyName: vatsim-data-api-proxy-fetcher-execution-policy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub "${DataBucket.Arn}/*"
+  Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: vatsim_data_api_proxy.main.handler
+      Runtime: python3.12
+      CodeUri: ../../build
+      Role: !GetAtt FunctionExecutionRole.Arn
+      FunctionName: !Sub "${Environment}-vatsim-data-api-proxy-fetcher"
+      MemorySize: 256
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref DataBucket
+          POWERTOOLS_SERVICE_NAME: vatsim-data-api-proxy-fetcher
+          POWERTOOLS_METRICS_NAMESPACE: !Sub "vatsim-data-api-proxy/${Environment}/fetcher"
+          POWERTOOLS_TRACER_CAPTURE_ERROR: false
+          LOG_LEVEL: INFO
+      Events:
+        Schedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(2 minutes)
+  ErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Period: 60
+      TreatMissingData: notBreaching
+      Statistic: Sum
+      Threshold: 0
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue notification-topic-arn
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref Function
