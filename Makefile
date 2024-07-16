@@ -4,10 +4,16 @@ clean:
 	rm -rf build
 
 install:
-	poetry install
+	( \
+			export PATH="${HOME}/.poetry/bin:${PATH}" && \
+			poetry install \
+	)
 
 test:
-	poetry run pylint vatsim_data_api_proxy
+	( \
+			export PATH="${HOME}/.poetry/bin:${PATH}" && \
+			poetry run pylint vatsim_data_api_proxy \
+	)
 
 package: clean install test
 	sh package.sh
