@@ -23,9 +23,11 @@ def handler(_event, _context):
 
     bucket.put_object(
         Body=json.dumps(data["pilots"]).encode("utf-8"),
-        Key="pilots.json"
+        Key="pilots.json",
+        ContentType="application/json"
     )
     bucket.put_object(
         Body=json.dumps(data["controllers"]).encode("utf-8"),
-        Key="controllers.json"
+        Key="controllers.json",
+        ContentType="application/json"
     )
