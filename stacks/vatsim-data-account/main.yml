@@ -73,6 +73,7 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
       RoleName: !Sub "${Environment}-vatsim-data-api-proxy-fetcher-execution-role"
       Policies:
         - PolicyName: vatsim-data-api-proxy-fetcher-execution-policy
