@@ -23,7 +23,7 @@ def handler(_event, _context):
 
     bucket.put_object(
         Body=json.dumps(data["pilots"]).encode("utf-8"),
-        Key="controllers.json"
+        Key="pilots.json"
     )
     bucket.put_object(
         Body=json.dumps(data["controllers"]).encode("utf-8"),
