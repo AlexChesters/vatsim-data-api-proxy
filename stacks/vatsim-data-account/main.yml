@@ -106,7 +106,7 @@ Resources:
         Schedule:
           Type: ScheduleV2
           Properties:
-            ScheduleExpression: rate(2 minutes)
+            ScheduleExpression: rate(1 minutes)
   ErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
