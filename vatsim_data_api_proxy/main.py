@@ -10,7 +10,7 @@ from vatsim_data_api_proxy.networking.api_client import fetch_data
 logger = Logger()
 tracer = Tracer()
 
-@tracer.capture_lambda_handler
+@tracer.capture_lambda_handler(capture_response=False) # https://github.com/aws-powertools/powertools-lambda-python/issues/476
 @logger.inject_lambda_context(log_event=True)
 def handler(_event, _context):
     s3 = boto3.resource("s3")
